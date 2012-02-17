@@ -69,10 +69,10 @@ function wowdata_info()
 	return array(
 		"name"          => "WoW Data Links",
 		"description"   => "Displays World of Warcraft data from Blizzard`s battle.net API in posts and messages.",
-		"website"       => "http://www.rebarchik.com",
-		"author"        => "Luke",
+		"website"       => "https://github.com/HjildorMMOTools/WoWData",
+		"author"        => "Luke Rebarchik",
 		"authorsite"    => "mailto:myfavoriteluke@gmail.com",
-		"version"       => "0.0.1",
+		"version"       => "0.1.0",
 		"guid"          => "",
 		"compatibility" => "16*"
 	);
@@ -81,50 +81,71 @@ function wowdata_info()
 function wowdata_install()
 {
 	global $mybb, $db;
-
-	// delete settings that were not uninstalled cleanly
-	$db->delete_query('settings', "name LIKE 'wowdata_%'");
-	$db->delete_query('settinggroups', "name = 'wowdata'");
-
-	// add settings group
-	$query = $db->simple_select('settinggroups', "MAX(disporder) AS max_disporder");
-	$disporder = $db->fetch_field($query, 'max_disporder') + 1;
-	$gid = $db->insert_query('settinggroups', array(
+		
+	// DELETE ALL SETTINGS TO AVOID DUPLICATES
+	$db->write_query("DELETE FROM ".TABLE_PREFIX."settings WHERE name IN(
+		'wowdata_switch'
+	)");
+	$db->delete_query("settinggroups", "name = 'wowdata'");
+	
+	$query = $db->simple_select("settinggroups", "COUNT(*) as rows");
+	$rows = $db->fetch_field($query, "rows");
+	
+	$insertarray = array(
 		'name' => 'wowdata',
 		'title' => 'WoW Data Links',
-		'description' => $db->escape_string("Options to configure the WoW Data Links plugin."),
-		'disporder' => $disporder,
+		'description' => 'Options to configure the WoW Data Links plugin.',
+		'disporder' => $rows+1,
 		'isdefault' => 0
-	));
-
-	// add settings
-	$db->insert_query('settings', array(
+	);
+	$group['gid'] = $db->insert_query("settinggroups", $insertarray);
+	$mybb->wowdata_insert_gid = $group['gid'];
+	
+	$insertarray = array(
+		'name' => 'wowdata_switch',
+		'title' => 'WoW Data Main Switch',
+		'description' => 'Turns on or off WoW Data.',
+		'optionscode' => 'onoff',
+		'value' => 1,
+		'disporder' => 0,
+		'gid' => $group['gid']
+	);
+	$db->insert_query("settings", $insertarray);
+	
+	$insertarray = array(
 		'name' => 'wowdata_locale',
 		'title' => 'Locale',
-		'description' => $db->escape_string("Many areas are covered, try yours!  The first part is a 2 letter language code, after the \"_\" is the \"zone\" you want to cover.  To know which one your need simply log into battle.net and look what appears before \".battle.net\"  Example: \"en_us\" is for United States in English, \"de_eu\" is for Europe in German, \"sp_us\" is for United States in Spanish..."),
+		'description' => 'Many areas are covered, try yours!  The first part is a 2 letter language code, after the \"_\" is the \"zone\" you want to cover.  To know which one your need simply log into battle.net and look what appears before \".battle.net\"  Example: \"en_us\" is for United States in English, \"de_eu\" is for Europe in German, \"sp_us\" is for United States in Spanish...',
 		'optionscode' => "text",
 		'value' => 'en_us',
 		'disporder' => 1,
-		'gid' => $gid
-	));
-	$db->insert_query('settings', array(
+		'gid' => $group['gid']
+	);
+	$db->insert_query("settings", $insertarray);
+	
+	$insertarray = array(
 		'name' => 'wowdata_realm',
 		'title' => 'Realm',
-		'description' => $db->escape_string("Your realm goes here.  Please use no leading or trailing spaces."),
+		'description' => "Your realm goes here.  Please use no leading or trailing spaces.",
 		'optionscode' => "text",
 		'value' => 'Thrall',
 		'disporder' => 2,
-		'gid' => $gid
-	));
+		'gid' => $group['gid']
+	);
+	$db->insert_query("settings", $insertarray);
+	
 	rebuild_settings();
 }
 
 function wowdata_is_installed()
 {
 	global $mybb, $db;
-
-	/*return $db->table_exists('wowdata');*/
-	return true;
+	
+	$query = $db->simple_select("settinggroups", "name", "name = 'wowdata'");
+	$wowdata_result = $db->fetch_array($query);
+	if($wowdata_result)
+		return true;
+	else return false;
 }
 
 function wowdata_uninstall()
@@ -132,14 +153,14 @@ function wowdata_uninstall()
 	global $mybb, $db;
 
 	// remove settings
-	$db->delete_query('settings', "name LIKE 'wowdata_%'");
 	$db->delete_query('settinggroups', "name = 'wowdata'");
-
-	rebuild_settings();
+	$db->delete_query('settings', "name LIKE 'wowdata%'");
 }
 
 function wowdata_activate()
 {
+	global $db;
+	$db -> update_query('settings', array('value' => 1), "name = 'wowdata_switch'");
 	//require_once MYBB_ROOT.'/inc/adminfunctions_templates.php';
 	//find_replace_templatesets('headerinclude', '/{\$newpmmsg}/', WOWDATA_HEADER . "\n{\$newpmmsg}");
 	//find_replace_templatesets("footer","/(".preg_quote("{\$auto_dst_detection}").")/i", "{WOWDATA_FOOTER}\n$1");
@@ -147,6 +168,8 @@ function wowdata_activate()
 
 function wowdata_deactivate()
 {
+	global $db;
+	$db -> update_query('settings', array('value' => 0), "name = 'wowdata_switch'");
 	//require_once MYBB_ROOT.'/inc/adminfunctions_templates.php';
 	//find_replace_templatesets('headerinclude', '/' . preg_quote(WOWDATA_HEADER) . '\n/', '', 0);
 	//find_replace_templatesets("footer","/" . preg_quote(WOWDATA_FOOTER) . "\n/i", "\n");
@@ -182,6 +205,7 @@ function wowdata_arrayfilter($var) {
 		return false;
 }
 function wowdata_data($data, $code, $parm1, $parm2) {
+	global $mybb;
 	$parm1 = explode("=", $parm1);
 	$parm2 = explode("=", $parm2);
 	if(count($parm1)>1)
@@ -190,6 +214,8 @@ function wowdata_data($data, $code, $parm1, $parm2) {
 	if(count($parm2)>1)
 		if($parm2[0]=="")
 			$parm2 = array($parm2[1]);
+	$zone = substr($mybb -> settings['wowdata_locale'], strpos($mybb -> settings['wowdata_locale'],"_")+1);
+	$lang = substr($mybb -> settings['wowdata_locale'], 0, strpos($mybb -> settings['wowdata_locale'],"_"));
 	/*array_filter($parm1,"wowdata_arrayfilter");
 	array_filter($parm2,"wowdata_arrayfilter");
 	echo "Func<pre>\n";
@@ -198,11 +224,11 @@ function wowdata_data($data, $code, $parm1, $parm2) {
 	echo "</pre>tion\n<br/>";*/
 	$ret = "[Placeholder]";
 	//	WoW battle net prefix...
-	$ret = "<a href=\"http://us.battle.net/wow/en/";
+	$ret = "<a href=\"http://".$zone.".battle.net/wow/".$lang."/";
 	//	Request type (currently the "code" must match the intended URL)
 	$ret .= strtolower($code);
 	//	Insert Realm
-	$ret .= "/thrall/";
+	$ret .= "/".$mybb->settings['wowdata_realm']."/";
 	//	if it's an arena team the first parameter will always match 2v2 or 3v3 etc.
 	$ret .= ( count($parm1>0 ) ? 
 		( ( preg_match("/\dv\d/i", $parm1[0]) ) ? 
@@ -248,10 +274,13 @@ function wowdata_data($data, $code, $parm1, $parm2) {
 	return $ret;
 }
 function wowdata_footercode($page) {
-	//global $mybb;
-	//if ($mybb -> settings['wowdata_realm'] != ""){
-		$page = preg_replace('/([\s\n\r\t]*\<\/body\>)/i', WOWDATA_FOOTER . '$1', $page);
-	//}
+	global $db;
+	$query = $db->simple_select("settings", "value", "name = 'wowdata_switch'");
+	$wowdata_result = $db->fetch_array($query);
+	if($wowdata_result)
+		if ($wowdata_result['value'] == 1){
+			$page = preg_replace('/([\s\n\r\t]*\<\/body\>)/i', WOWDATA_FOOTER . '$1', $page);
+		}
 	return $page;
 }
 ?>
