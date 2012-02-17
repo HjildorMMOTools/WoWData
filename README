@@ -1,7 +1,13 @@
+Installation instructions:
+1. Copy the contents of mybb_upload to your mybb installation.
+2. Log into your admin tool (http://YOURSITELOCATION/admin) and activate under "Configuration" >> "Plugins"
+
+
 wowdata.php -- MyBB plugin for querying Blizzard's World of Warcraft API
   version 0.1.0, February 17th, 2012
   Basic ideas based upon the work of Daniel Major in his wowitem plugin.
   Tooltips powered by DarkTip: https://github.com/darkspotinthecorner/DarkTip
+  and by jquery.qtip.min: http://craigsworks.com/projects/qtip/
 
   Copyright (C) 2012 Luke Rebarchik
 

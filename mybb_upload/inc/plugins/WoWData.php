@@ -1,9 +1,9 @@
 <?php
-//	Edited and committed
 /* wowdata.php -- MyBB plugin for querying Blizzard's World of Warcraft API
   version 0.1.0, February 17th, 2012
   Basic ideas based upon the work of Daniel Major in his wowitem plugin.
   Tooltips powered by DarkTip: https://github.com/darkspotinthecorner/DarkTip
+  and by jquery.qtip.min: http://craigsworks.com/projects/qtip/
 
   Copyright (C) 2012 Luke Rebarchik
 
@@ -41,25 +41,25 @@ define(WOWDATA_FOOTER, '<script type="text/javascript">
 		window.___DarkTipSettings = {
 			\'resources\': {
 				\'extras\': [
-					\'inc/plugins/DarkTip/modules/wow.css\',
-					\'inc/plugins/DarkTip/modules/wow.js\',
-					\'inc/plugins/DarkTip/modules/wow.realm.js\',
-					\'inc/plugins/DarkTip/modules/wow.quest.js\',
-					\'inc/plugins/DarkTip/modules/wow.item.js\',
-					\'inc/plugins/DarkTip/modules/wow.item.equipped.js\',
-					\'inc/plugins/DarkTip/modules/wow.character.js\',
-					\'inc/plugins/DarkTip/modules/wow.character.pvp.js\',
-					\'inc/plugins/DarkTip/modules/wow.guild.js\',
-					\'inc/plugins/DarkTip/modules/wow.arena.js\',
-					\'inc/plugins/DarkTip/modules/wow.wowhead.js\',
-					\'inc/plugins/DarkTip/modules/wow.wowhead.character.js\',
-					\'inc/plugins/DarkTip/modules/wow.wowhead.guild.js\',
-					\'inc/plugins/DarkTip/modules/wow.wowhead.item.js\',
-					\'inc/plugins/DarkTip/modules/wow.wowhead.quest.js\'
+					\'jscripts/DarkTip/modules/wow.css\',
+					\'jscripts/DarkTip/modules/wow.js\',
+					\'jscripts/DarkTip/modules/wow.realm.js\',
+					\'jscripts/DarkTip/modules/wow.quest.js\',
+					\'jscripts/DarkTip/modules/wow.item.js\',
+					\'jscripts/DarkTip/modules/wow.item.equipped.js\',
+					\'jscripts/DarkTip/modules/wow.character.js\',
+					\'jscripts/DarkTip/modules/wow.character.pvp.js\',
+					\'jscripts/DarkTip/modules/wow.guild.js\',
+					\'jscripts/DarkTip/modules/wow.arena.js\',
+					\'jscripts/DarkTip/modules/wow.wowhead.js\',
+					\'jscripts/DarkTip/modules/wow.wowhead.character.js\',
+					\'jscripts/DarkTip/modules/wow.wowhead.guild.js\',
+					\'jscripts/DarkTip/modules/wow.wowhead.item.js\',
+					\'jscripts/DarkTip/modules/wow.wowhead.quest.js\'
 				]
 			}
 		};	</script>
-	<script type="text/javascript" src="inc/plugins/DarkTip/DarkTip.js"></script>');
+	<script type="text/javascript" src="jscripts/DarkTip/DarkTip.js"></script>');
 
 $plugins -> add_hook('pre_output_page', 'wowdata_footercode');
 $plugins -> add_hook("parse_message", "wowdata_parse");
@@ -206,7 +206,7 @@ function wowdata_data($data, $code, $parm1, $parm2) {
 	//	if it's an arena team the first parameter will always match 2v2 or 3v3 etc.
 	$ret .= ( count($parm1>0 ) ? 
 		( ( preg_match("/\dv\d/i", $parm1[0]) ) ? 
-			strtolower($parm1[0])
+			strtolower($parm1[0])."/"
 		:
 			""
 		)
@@ -221,17 +221,17 @@ function wowdata_data($data, $code, $parm1, $parm2) {
 			( ( strtolower($parm1[0])=="pvp" ) ? 
 				"pvp" 
 			:
-				( ( strtolower($parm1[0])!="" ) ? 
+				( ( strtolower($parm1[0])!="" && preg_match("/\dv\d/i", $parm1[0]) == 0 ) ? 
 					"".$parm1[0] . ( (count($parm1)>1 ) ? "".$parm1[1] : "" )
 				:
-					"simple"
+					( $parm1[0] == "character" )?"simple":""
 				)
 				. 
 				( ( count($parm2)>0 ) ?
 					( ( strtolower($parm2[0])=="pvp" ) ? 
 						"pvp" 
 					:
-						( ( strtolower($parm2[0])!="" ) ? 
+						( ( strtolower($parm2[0])!="" && preg_match("/\dv\d/i", $parm2[0]) == 0 ) ? 
 							"".$parm2[0].((count($parm2)>1)?"".$parm2[1]:"")
 						:
 							""
