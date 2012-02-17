@@ -50,12 +50,16 @@ define(WOWDATA_FOOTER, '<script type="text/javascript">
 					\'jscripts/DarkTip/modules/wow.character.js\',
 					\'jscripts/DarkTip/modules/wow.character.pvp.js\',
 					\'jscripts/DarkTip/modules/wow.guild.js\',
-					\'jscripts/DarkTip/modules/wow.arena.js\',
+					\'jscripts/DarkTip/modules/wow.arena.js\'' . 
+					/*,
+						wowitem does a good job with these... no need to duplicate
 					\'jscripts/DarkTip/modules/wow.wowhead.js\',
 					\'jscripts/DarkTip/modules/wow.wowhead.character.js\',
 					\'jscripts/DarkTip/modules/wow.wowhead.guild.js\',
 					\'jscripts/DarkTip/modules/wow.wowhead.item.js\',
 					\'jscripts/DarkTip/modules/wow.wowhead.quest.js\'
+					*/
+					'
 				]
 			}
 		};	</script>
@@ -115,7 +119,7 @@ function wowdata_install()
 	$insertarray = array(
 		'name' => 'wowdata_locale',
 		'title' => 'Locale',
-		'description' => 'Many areas are covered, try yours!  The first part is a 2 letter language code, after the \"_\" is the \"zone\" you want to cover.  To know which one your need simply log into battle.net and look what appears before \".battle.net\"  Example: \"en_us\" is for United States in English, \"de_eu\" is for Europe in German, \"sp_us\" is for United States in Spanish...',
+		'description' => 'Many areas are covered, try yours!  The first part is a 2 letter language code, after the \"_\" is the \"zone\" you want to cover.  To know which one your need simply log into battle.net and look what appears before \".battle.net\"  Example: \"en_us\" is for United States in English, \"de_eu\" is for Europe in German, \"es_us\" is for United States in Spanish...',
 		'optionscode' => "text",
 		'value' => 'en_us',
 		'disporder' => 1,
