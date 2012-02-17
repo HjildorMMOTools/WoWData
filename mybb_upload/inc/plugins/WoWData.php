@@ -224,7 +224,7 @@ function wowdata_data($data, $code, $parm1, $parm2) {
 	echo "</pre>tion\n<br/>";*/
 	$ret = "[Placeholder]";
 	//	WoW battle net prefix...
-	$ret = "<a href=\"http://".$zone.".battle.net/wow/".$lang."/";
+	$ret = "<a target=\"_blank\" href=\"http://".$zone.".battle.net/wow/".$lang."/";
 	//	Request type (currently the "code" must match the intended URL)
 	$ret .= strtolower($code);
 	//	Insert Realm
