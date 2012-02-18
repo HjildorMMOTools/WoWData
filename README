@@ -1,6 +1,8 @@
 Installation instructions:
 1. Copy the contents of mybb_upload to your mybb installation.
 2. Log into your admin tool (http://YOURSITELOCATION/admin) and activate under "Configuration" >> "Plugins"
+3. Set up your server and locale in the settings under "Configuration" >> "Settings" >> "Board Settings" >> "WoW Data Links"
+4. Post messages using [character]Name[/character], [guild]Name[/guild] and [arena=2v2]Name[/arena] in your posts and messages.
 
 
 wowdata.php -- MyBB plugin for querying Blizzard's World of Warcraft API

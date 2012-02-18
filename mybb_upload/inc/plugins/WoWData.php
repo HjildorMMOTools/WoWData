@@ -33,14 +33,18 @@ if(!defined("IN_MYBB"))
 	die("Direct initialization of this file is not allowed.<br /><br />Please make sure IN_MYBB is defined.");
 }
 
-// the MyCode tag(s) to parse for, separated by |
-define(WOWDATA_MYCODE, 'arena|character|guild');
+//	Detect if the wowhead script is included... if so then don't do the items with this tooltip.
+$wowitem_active = wowdata_detectwowitem();
 
-/*define(WOWDATA_HEADER, '<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"></script>');*/
+// the MyCode tag(s) to parse for, separated by |
+define(WOWDATA_MYCODE, 'arena|character|guild'.((!$wowitem_active)?"|item":""));
+
+
 define(WOWDATA_FOOTER, '<script type="text/javascript">
 		window.___DarkTipSettings = {
 			\'resources\': {
 				\'extras\': [
+					\'jscripts/WoWData.css\',
 					\'jscripts/DarkTip/modules/wow.css\',
 					\'jscripts/DarkTip/modules/wow.js\',
 					\'jscripts/DarkTip/modules/wow.realm.js\',
@@ -50,15 +54,14 @@ define(WOWDATA_FOOTER, '<script type="text/javascript">
 					\'jscripts/DarkTip/modules/wow.character.js\',
 					\'jscripts/DarkTip/modules/wow.character.pvp.js\',
 					\'jscripts/DarkTip/modules/wow.guild.js\',
-					\'jscripts/DarkTip/modules/wow.arena.js\'' . 
-					/*,
-						wowitem does a good job with these... no need to duplicate
+					\'jscripts/DarkTip/modules/wow.arena.js\'' . ( (!$wowitem_active) ?
+					',
 					\'jscripts/DarkTip/modules/wow.wowhead.js\',
 					\'jscripts/DarkTip/modules/wow.wowhead.character.js\',
 					\'jscripts/DarkTip/modules/wow.wowhead.guild.js\',
 					\'jscripts/DarkTip/modules/wow.wowhead.item.js\',
 					\'jscripts/DarkTip/modules/wow.wowhead.quest.js\'
-					*/
+					' : '' ) .
 					'
 				]
 			}
@@ -189,12 +192,7 @@ function wowdata_parse($message)
 		$loopiterator = 0;
 		$data_match = "/\[(".$mycode.")(\s?=?[^=\]]*)(\s?=?[^=\]]*)\]([^\[]+)\[\/".$mycode."\]/ies";
 		while(preg_match($data_match, $message, $datas_found) > 0 && $loopiterator < $max_loops) {
-			//	This internal loop isn't strictly needed.  I made the replace only do one because I wasn't sure the eval code was working properly.
-			//	Either version of the following will work: (I commented out my version)
-			//	$message = preg_replace($data_match, "wowdata_data('".$datas_found[1]."')", $message, 1);
-			/*echo "<pre>\n";
-			print_r($datas_found);
-			echo "</pre>\n";*/
+			//$message = preg_replace($data_match, "wowdata_data('".$datas_found[1]."')", $message, 1);
 			$message = preg_replace($data_match, "wowdata_data('\$4', '\$1', '\$2', '\$3')", $message, 1);
 			//	Please note that if you remove the loop you need to remove the 1 in the 4th parameter above.
 			$loopiterator++;
@@ -220,12 +218,6 @@ function wowdata_data($data, $code, $parm1, $parm2) {
 			$parm2 = array($parm2[1]);
 	$zone = substr($mybb -> settings['wowdata_locale'], strpos($mybb -> settings['wowdata_locale'],"_")+1);
 	$lang = substr($mybb -> settings['wowdata_locale'], 0, strpos($mybb -> settings['wowdata_locale'],"_"));
-	/*array_filter($parm1,"wowdata_arrayfilter");
-	array_filter($parm2,"wowdata_arrayfilter");
-	echo "Func<pre>\n";
-	print_r($parm1);
-	print_r($parm2);
-	echo "</pre>tion\n<br/>";*/
 	$ret = "[Placeholder]";
 	//	WoW battle net prefix...
 	$ret = "<a target=\"_blank\" href=\"http://".$zone.".battle.net/wow/".$lang."/";
@@ -274,7 +266,7 @@ function wowdata_data($data, $code, $parm1, $parm2) {
 		:
 			"";
 	//	This part is simple.  The data goes in these [] and is a link...
-	$ret .= "\">[".$data."]</a>";
+	$ret .= "\"><span class=\"" . $code . "\">[".$data."]</span></a>";
 	return $ret;
 }
 function wowdata_footercode($page) {
@@ -286,5 +278,20 @@ function wowdata_footercode($page) {
 			$page = preg_replace('/([\s\n\r\t]*\<\/body\>)/i', WOWDATA_FOOTER . '$1', $page);
 		}
 	return $page;
+}
+
+function wowdata_detectwowitem() {
+	global $db;
+	$query = $db->query("
+		SELECT s.sid, t.template, t.tid 
+		FROM ".TABLE_PREFIX."templatesets s 
+		LEFT JOIN ".TABLE_PREFIX."templates t ON (t.title='headerinclude' AND t.sid=s.sid)
+	");
+	$template = $db->fetch_array($query);
+	$result = preg_match("/www\.wowhead\.com\/widgets\/power\.js/iU", $template['template']);
+	if($result > 0)
+		return true;
+	else
+		return false;
 }
 ?>
