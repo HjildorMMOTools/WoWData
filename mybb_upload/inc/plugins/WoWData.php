@@ -1,6 +1,6 @@
 <?php
 /* wowdata.php -- MyBB plugin for querying Blizzard's World of Warcraft API
-  version 0.1.0, February 17th, 2012
+  version 0.1.1, February 17th, 2012
   Basic ideas based upon the work of Daniel Major in his wowitem plugin.
   Tooltips powered by DarkTip: https://github.com/darkspotinthecorner/DarkTip
   and by jquery.qtip.min: http://craigsworks.com/projects/qtip/
@@ -79,8 +79,8 @@ function wowdata_info()
 		"website"       => "https://github.com/HjildorMMOTools/WoWData",
 		"author"        => "Luke Rebarchik",
 		"authorsite"    => "mailto:myfavoriteluke@gmail.com",
-		"version"       => "0.1.0",
-		"guid"          => "",
+		"version"       => "0.1.1",
+		"guid"          => "b05e4bcc066b9d7281d5b79e3e29703f",
 		"compatibility" => "16*"
 	);
 }
@@ -194,7 +194,6 @@ function wowdata_parse($message)
 		while(preg_match($data_match, $message, $datas_found) > 0 && $loopiterator < $max_loops) {
 			//$message = preg_replace($data_match, "wowdata_data('".$datas_found[1]."')", $message, 1);
 			$message = preg_replace($data_match, "wowdata_data('\$4', '\$1', '\$2', '\$3')", $message, 1);
-			//	Please note that if you remove the loop you need to remove the 1 in the 4th parameter above.
 			$loopiterator++;
 		}
 	}
@@ -222,9 +221,9 @@ function wowdata_data($data, $code, $parm1, $parm2) {
 	//	WoW battle net prefix...
 	$ret = "<a target=\"_blank\" href=\"http://".$zone.".battle.net/wow/".$lang."/";
 	//	Request type (currently the "code" must match the intended URL)
-	$ret .= strtolower($code);
+	$ret .= urlencode(strtolower($code));
 	//	Insert Realm
-	$ret .= "/".$mybb->settings['wowdata_realm']."/";
+	$ret .= "/".urlencode($mybb->settings['wowdata_realm'])."/";
 	//	if it's an arena team the first parameter will always match 2v2 or 3v3 etc.
 	$ret .= ( count($parm1>0 ) ? 
 		( ( preg_match("/\dv\d/i", $parm1[0]) ) ? 
@@ -236,7 +235,7 @@ function wowdata_data($data, $code, $parm1, $parm2) {
 		""
 	);
 	//	The main part of the [code]This Part[/code] goes in the URL here
-	$ret .= $data."/";
+	$ret .= preg_replace("/\+/", "%20", urlencode($data))."/";
 	//	If the first parameter is pvp the code will have been character (but I didn't check for it because including it in the URL should make no difference.
 	$ret .= 
 		( count($parm1)>0 ) ?
@@ -266,9 +265,56 @@ function wowdata_data($data, $code, $parm1, $parm2) {
 		:
 			"";
 	//	This part is simple.  The data goes in these [] and is a link...
-	$ret .= "\"><span class=\"" . $code . "\">[".$data."]</span></a>";
+	$ret .= "\"><span class=\"" . preg_replace("/\s/", "-", $code) . "\">[".$data."]</span></a>";
 	return $ret;
 }
+
+function wowdata_installtables() {
+	global $mybb, $db;
+
+	// create cache table
+	$db->write_query("
+	CREATE TABLE IF NOT EXISTS `".TABLE_PREFIX."wowdata_cache` (
+ 		`wowdata_id` int(16) NOT NULL AUTO_INCREMENT COMMENT 'Primary key; numeric, auto increment',
+		`text_key` varchar(75) NOT NULL COMMENT 'between the [] codes comes text, this is where it is stored',
+		`attribute_keys` varchar(75) NOT NULL COMMENT 'sometimes things aren`t 1:1, extended matching criteria go here',
+		`external_id` int(16) NOT NULL COMMENT 'items have an ID shared by wowhead and blizzard.  This ID is stored here',
+		PRIMARY KEY (`wowdata_id`),
+		UNIQUE KEY `external_id` (`external_id`)
+	) AUTO_INCREMENT=1");
+}
+
+function wowdata_getdata($data) {
+}
+
+function wowdata_cachedata($data) {
+	$insert_query = "
+		INSERT INTO `mybb`.`mybb_wowdata_cache` (
+			`wowdata_id` ,
+			`text_key` ,
+			`attribute_keys` ,
+			`external_id`
+		)
+		VALUES (
+			".(($data['local_id']!="")?$data['local_id']:"NULL")." ,
+			'Test',
+			'Key1=12',
+			'1'
+	";
+}
+
+function wowdata_getdata_cache($data) {
+}
+
+function wowdata_getdata_blizzard($data) {
+}
+
+function wowdata_getdata_wowhead($data) {
+}
+
+function wowdata_detectdatatype($data) {
+}
+
 function wowdata_footercode($page) {
 	global $db;
 	$query = $db->simple_select("settings", "value", "name = 'wowdata_switch'");
