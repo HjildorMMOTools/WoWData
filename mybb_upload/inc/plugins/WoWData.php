@@ -190,7 +190,7 @@ function wowdata_parse($message)
 	foreach ($mycodes as $mycode)
 	{
 		$loopiterator = 0;
-		$data_match = "/\[(".$mycode.")(\s?=?[^=\]]*)(\s?=?[^=\]]*)\]([^\[]+)\[\/".$mycode."\]/ies";
+		$data_match = "/\[(".$mycode.")(\s?=[^=\]]*)?(\s[^=]+=[^=\]]+)?\]([^\[]+)\[\/".$mycode."\]/ies";
 		while(preg_match($data_match, $message, $datas_found) > 0 && $loopiterator < $max_loops) {
 			//$message = preg_replace($data_match, "wowdata_data('".$datas_found[1]."')", $message, 1);
 			$message = preg_replace($data_match, "wowdata_data('\$4', '\$1', '\$2', '\$3')", $message, 1);
@@ -212,9 +212,6 @@ function wowdata_data($data, $code, $parm1, $parm2) {
 	if(count($parm1)>1)
 		if($parm1[0]=="")
 			$parm1 = array($parm1[1]);
-	if(count($parm2)>1)
-		if($parm2[0]=="")
-			$parm2 = array($parm2[1]);
 	$zone = substr($mybb -> settings['wowdata_locale'], strpos($mybb -> settings['wowdata_locale'],"_")+1);
 	$lang = substr($mybb -> settings['wowdata_locale'], 0, strpos($mybb -> settings['wowdata_locale'],"_"));
 	$ret = "[Placeholder]";
@@ -223,7 +220,14 @@ function wowdata_data($data, $code, $parm1, $parm2) {
 	//	Request type (currently the "code" must match the intended URL)
 	$ret .= urlencode(strtolower($code));
 	//	Insert Realm
-	$ret .= "/".urlencode($mybb->settings['wowdata_realm'])."/";
+	$default_realm = $mybb->settings['wowdata_realm'];
+	if(strtolower(trim($parm1[0])) == "realm")
+		$realm = trim($parm1[1]);
+	else if(strtolower(trim($parm2[0])) == "realm")
+		$realm = trim($parm2[1]);
+	else
+		$realm = $default_realm;
+	$ret .= "/".urlencode($realm)."/";
 	//	if it's an arena team the first parameter will always match 2v2 or 3v3 etc.
 	$ret .= ( count($parm1>0 ) ? 
 		( ( preg_match("/\dv\d/i", $parm1[0]) ) ? 
@@ -252,8 +256,8 @@ function wowdata_data($data, $code, $parm1, $parm2) {
 					( ( strtolower($parm2[0])=="pvp" ) ? 
 						"pvp" 
 					:
-						( ( strtolower($parm2[0])!="" && preg_match("/\dv\d/i", $parm2[0]) == 0 ) ? 
-							"".$parm2[0].((count($parm2)>1)?"".$parm2[1]:"")
+						( ( strtolower($parm2[0])!="" && preg_match("/\dv\d/i", $parm2[0]) == 0 && preg_match("/realm/i", $parm2[0]) == 0) ? 
+							"/".$parm2[0]."/".((count($parm2)>1)?"".$parm2[1]:"")
 						:
 							""
 						)
