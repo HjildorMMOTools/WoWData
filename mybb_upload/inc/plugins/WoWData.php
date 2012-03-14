@@ -79,7 +79,7 @@ function wowdata_info() {
 		"website"       => "https://github.com/HjildorMMOTools/WoWData",
 		"author"        => "Luke Rebarchik",
 		"authorsite"    => "mailto:myfavoriteluke@gmail.com",
-		"version"       => "0.1.1",
+		"version"       => "1.0.0",
 		"guid"          => "b05e4bcc066b9d7281d5b79e3e29703f",
 		"compatibility" => "16*"
 	);
