@@ -1,6 +1,6 @@
 <?php
 /* wowdata.php -- MyBB plugin for querying Blizzard's World of Warcraft API
-  version 0.1.1, February 17th, 2012
+  version 1.1.0, February 17th, 2012
   Basic ideas based upon the work of Daniel Major in his wowitem plugin.
   Tooltips powered by DarkTip: https://github.com/darkspotinthecorner/DarkTip
   and by jquery.qtip.min: http://craigsworks.com/projects/qtip/
@@ -36,7 +36,7 @@ if(!defined("IN_MYBB")) {
 $wowitem_active = wowdata_detect_wowitem();
 
 // the MyCode tag(s) to parse for, separated by |
-define(WOWDATA_MYCODE, 'arena|character|guild'.((!$wowitem_active || $mybb->settings['wowdata_doitem'] == 1)?"|item":""));
+define(WOWDATA_MYCODE, 'achievement|spell|ability|arena|character|guild'.((!$wowitem_active || $mybb->settings['wowdata_doitem'] == 1)?"|item":""));
 
 
 define(WOWDATA_FOOTER, '<script type="text/javascript">
@@ -68,7 +68,7 @@ define(WOWDATA_FOOTER, '<script type="text/javascript">
 	<script type="text/javascript" src="jscripts/DarkTip/DarkTip.js"></script>' . ( (wowdata_itemtooltipsource() == "wowhead") ? '
 	<script tyle="text/javascript" src="http://www.wowhead.com/widgets/power.js"></script>' : '' ) . '
 ');
-echo $mybb->settings['wowdata_itemtooltipsource'];
+//echo $mybb->settings['wowdata_itemtooltipsource'];
 $plugins -> add_hook('pre_output_page', 'wowdata_footercode');
 $plugins -> add_hook("parse_message", "wowdata_parse");
 
@@ -78,8 +78,8 @@ function wowdata_info() {
 		"description"   => "Displays World of Warcraft data from Blizzard`s battle.net API in posts and messages using [character], [guild] and [arena] style tags.",
 		"website"       => "https://github.com/HjildorMMOTools/WoWData",
 		"author"        => "Luke Rebarchik",
-		"authorsite"    => "mailto:myfavoriteluke@gmail.com",
-		"version"       => "1.0.0",
+		"authorsite"    => "mailto:mmowebtools@gmail.com",
+		"version"       => "1.1.0",
 		"guid"          => "b05e4bcc066b9d7281d5b79e3e29703f",
 		"compatibility" => "16*"
 	);
@@ -250,6 +250,8 @@ function wowdata_arrayfilter($var) {
 
 function wowdata_data($data, $code, $parm1, $parm2) {
 	global $mybb;
+	if(strtolower($code) == "ability")
+		$code = "spell";
 	$parm1 = explode("=", $parm1);
 	$parm2 = explode("=", $parm2);
 	if(count($parm1)>1)
@@ -258,7 +260,7 @@ function wowdata_data($data, $code, $parm1, $parm2) {
 	$zone = substr($mybb -> settings['wowdata_locale'], strpos($mybb -> settings['wowdata_locale'],"_")+1);
 	$lang = substr($mybb -> settings['wowdata_locale'], 0, strpos($mybb -> settings['wowdata_locale'],"_"));
 	$ret = "[Placeholder]";
-	if($mybb -> settings['wowdata_itemtooltipdestination'] == "blizzard" || strtolower($code) != "item") {
+	if($mybb -> settings['wowdata_itemtooltipdestination'] == "blizzard" || (strtolower($code) != "item" && strtolower($code) != "spell" && strtolower($code) != "achievement")) {
 		//	WoW battle net prefix...
 		$ret = "<a target=\"_blank\" href=\"http://".$zone.".battle.net/wow/".$lang."/";
 	} else {
@@ -267,7 +269,8 @@ function wowdata_data($data, $code, $parm1, $parm2) {
 	}
 	//	Request type (currently the "code" must match the intended URL)
 	$ret .= urlencode(strtolower($code));
-	if($code != "item") {
+	$cases = array("realm specific" => array("character","guild","arena"), "non realm specific" => array("item","spell","achievement"));
+	if(in_array($code, $cases['realm specific'])) {
 		//	Insert Realm
 		$default_realm = $mybb->settings['wowdata_realm'];
 		if(strtolower(trim($parm1[0])) == "realm")
@@ -350,7 +353,7 @@ function wowdata_data($data, $code, $parm1, $parm2) {
 			}
 		}
 	} else {
-		//	This is specific for [item] searches...
+		//	This is non realm specific searches... (item, achievement, spell)
 		$items_array = wowdata_getdata(array('code'=>$code,'search'=>$data));
 		if(count($items_array) == 1) {
 			$item = $items_array[0];
@@ -370,7 +373,6 @@ function wowdata_data($data, $code, $parm1, $parm2) {
 						//echo '/ilevel\='.$ilevel.'\&/i'." not found in ".$item_i['attribute_keys']."<br/>\n";
 					}
 				}
-				
 			}
 			if(!isset($item)) {
 				//echo "Item not yet found...\n";
@@ -423,7 +425,7 @@ function wowdata_data($data, $code, $parm1, $parm2) {
 		$item_data = (!is_array($item['data']))?json_decode($item['data'], true):$item['data'];
 		if(count($item_data) == 0)
 			$item_data = $item;
-		$qualities = array("poor","common","uncommon","rare","epic","legendary","artifact","heirloom");
+		$qualities = array("poor","common","uncommon","rare","epic","legendary","artifact","heirloom","achievement","spell");
 		$code = $qualities[$item_data['quality']];
 	}
 	//	This part is simple.  The data goes in these [] and is a link...
@@ -470,6 +472,27 @@ function wowdata_getdata($cache_data) {
 		} else
 			$search_wowhead = $cache_search;
 		return $search_wowhead;
+	} else if(strtolower($cache_data['code']) == "achievement" || strtolower($cache_data['code']) == "spell") {
+		//	Achievements and spells are now supported!!!
+		//echo "Looking for ".$cache_data['code']."<br/>\n"."wowdata_getdata_cache(array(\"code\"=>\"".$cache_data['code']."\",\"text_key\"=>\"".$cache_data['search']."\",\"attribute_keys\"=>\"\"))<br/>\n";
+		$cache_result = wowdata_getdata_cache(array("code"=>$cache_data['code'],"text_key"=>$cache_data['search'],"attribute_keys"=>""));
+		if(is_array($cache_result) && count($cache_result) > 0) {
+			$ret = $cache_result;
+		} else {
+			$ret = wowdata_getdata_wowhead($cache_data['search'], strtolower($cache_data['code']));
+			//echo "wowdata_getdata_cache(array(\"code\"=>\"".$cache_data['code']."\",\"text_key\"=>\"".$cache_data['search']."\",\"attribute_keys\"=>\"\"))<br/>\n";
+			$cache_result = wowdata_getdata_cache(array("code"=>$cache_data['code'],"text_key"=>$cache_data['search'],"attribute_keys"=>""));
+			$ret = $cache_result;
+			//echo "Result returned from cache:\n<pre>";
+			//print_r($ret);
+			//echo "</pre>\n<br/>\n";
+		}
+		if(count($ret) > 0)
+			$ret[array_pop(array_keys($ret))]['quality'] = (strtolower($cache_data['code']) == "achievement")?8:9;
+		//echo "Result returned from cache:\n<pre>";
+		//print_r($ret);
+		//echo "</pre>\n<br/>\n";
+		return array($ret);
 	}
 }
 
@@ -557,7 +580,7 @@ function wowdata_getdata_cache($cache_data) {
 	$cache_data = $db->fetch_array($query);
 	if(isset($cache_data['wowdata_id'])) {
 		$json_parsed = json_decode($cache_data['data'],true);
-		if(($json_parsed['status'] != "nok" && is_array($json_parsed)) || $cache_data['code'] == "item") {
+		if(($json_parsed['status'] != "nok" && is_array($json_parsed))) {		//	 || $cache_data['code'] == "item"
 			$cache_data['data'] = $json_parsed;
 			if($cache_data['code'] == "item") {
 				$ret = array($cache_data);
@@ -595,62 +618,249 @@ function wowdata_getdata_blizzard($url) {
 	return $curl_req;
 }
 
-function wowdata_getdata_wowhead($search_term) {
+function wowdata_getdata_wowhead($search_term, $code='item') {
 	$ch = curl_init();
-	$wowhead_url = "http://www.wowhead.com/search?q=".preg_replace('/\+/', '%20', urlencode($search_term))."&opensearch";
-	//	set URL and other appropriate options
-	curl_setopt($ch, CURLOPT_URL, $wowhead_url);
-	curl_setopt($ch, CURLOPT_HEADER, 0);
-	curl_setopt($ch, CURLOPT_RETURNTRANSFER , 1 );
-	
-	//	make the request...
-	$curl_req = curl_exec($ch);
-	
-	//	a little debug...
-	$http_status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-	//echo "<div>Status: ".$http_status."</div>\n";
-	//echo "<div>Response:\n".$curl_req."</div>\n";
-	
-	//	close cURL resource, and free up system resources
-	curl_close($ch);
-	$ret = json_decode($curl_req);
-	$items = array();
-	foreach($ret[7] as $index => $match) {
-		if($match[0] == 3) {
-			$name = preg_replace('/\s+\([^\)]+\)$/', "", $match[1][$index]);
-			$items_index = count($items);
-			$items[$items_index]['type'] = $match[0];
-			$items[$items_index]['item_id'] = $match[1];
-			$items[$items_index]['icon'] = $match[2];
-			$items[$items_index]['quality'] = $match[3];
-			$blizzard_url = "http://us.battle.net/api/wow/item/".$match[1];
-			$blizzard_data = json_decode(wowdata_getdata_blizzard($blizzard_url), true);
+	if($code == 'item') {
+		$wowhead_url = "http://www.wowhead.com/search?q=".preg_replace('/\+/', '%20', urlencode($search_term))."&opensearch";
+		//	set URL and other appropriate options
+		curl_setopt($ch, CURLOPT_URL, $wowhead_url);
+		curl_setopt($ch, CURLOPT_HEADER, 0);
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER , 1 );
+		
+		//	make the request...
+		$curl_req = curl_exec($ch);
+		
+		//	a little debug...
+		$http_status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+		//echo "<div>Status: ".$http_status."</div>\n";
+		//echo "<div>Response:\n".$curl_req."</div>\n";
+		
+		//	close cURL resource, and free up system resources
+		curl_close($ch);
+		$ret = json_decode($curl_req);
+		$items = array();
+		if(is_array($ret)) {
+			if(is_array($ret[7])) {
+				foreach($ret[7] as $index => $match) {
+					if($match[0] == 3) {
+						$name = preg_replace('/\s+\([^\)]+\)$/', "", $match[1][$index]);
+						$items_index = count($items);
+						$items[$items_index]['type'] = $match[0];
+						$items[$items_index]['item_id'] = $match[1];
+						$items[$items_index]['icon'] = $match[2];
+						$items[$items_index]['quality'] = $match[3];
+						$blizzard_url = "http://us.battle.net/api/wow/item/".$match[1];
+						$blizzard_data = json_decode(wowdata_getdata_blizzard($blizzard_url), true);
+						$cache_data = array(
+							"wowdata_id" => "null",
+							"code" => "item",
+							"text_key" => $blizzard_data['name'],
+							"attribute_keys" => "ilevel=".$blizzard_data['itemLevel']."&requiredLevel=".$blizzard_data['requiredLevel']."&itemClass=".$blizzard_data['itemClass'],
+							"external_id" => $match[1],
+							"url" => $blizzard_url,
+							"data" => $blizzard_data
+						);
+						wowdata_cachedata($cache_data);
+					}
+				}
+			}
+		}
+		if(count($items) > 0) {
 			$cache_data = array(
 				"wowdata_id" => "null",
 				"code" => "item",
-				"text_key" => $blizzard_data['name'],
-				"attribute_keys" => "ilevel=".$blizzard_data['itemLevel']."&requiredLevel=".$blizzard_data['requiredLevel']."&itemClass=".$blizzard_data['itemClass'],
-				"external_id" => $match[1],
-				"url" => $blizzard_url,
-				"data" => $blizzard_data
+				"text_key" => $search_term,
+				"attribute_keys" => "",
+				"external_id" => "null",
+				"url" => $wowhead_url,
+				"data" => $items
 			);
 			wowdata_cachedata($cache_data);
+			return $items;
+		}else {
+			$items[] = array('type' => 'item', 'item_id' => 18230, 'icon' => '', 'quality' => 0);
+			$cache_data = array(
+				"wowdata_id" => "null",
+				"code" => "item",
+				"text_key" => $search_term,
+				"attribute_keys" => "ilevel=Broken",
+				"external_id" => 18230,
+				"url" => "http://www.wowhead.com/item=18230",
+				"data" => json_encode('{"id":18230,"name":"Broken I.W.I.N. Button","itemLevel":1}')
+			);
+			wowdata_cachedata($cache_data);
+			return $items;
 		}
+	} else {
+		/*
+			Character Spells:
+			http://www.wowhead.com/spells=7?filter=na=SPELLNAME
+			NPC Spells:
+			http://www.wowhead.com/spells=-8?filter=na=SPELLNAME
+			
+			Achieves:
+			http://www.wowhead.com/achievements?filter=na=ACHIEVENAME
+			
+			Pattern Match:
+@@@@@@@@@@==--BEGIN SAMPLE--==@@@@@@@@@<div id="lv-spells" class="listview"></div>
+<script type="text/javascript">//<![CDATA[
+var _ = {};
+_[133]={name_enus:'Fireball',rank_enus:'',icon:'spell_fire_flamebolt'};
+$.extend(true, g_spells, _);
+_ = g_spells;
+new Listview({template: 'spell', id: 'spells', visibleCols: ['level', 'schools', 'source', 'classes'], sort: ['level', 'name'], nItemsPerPage: 100, data: [{"cat":7,"chrclass":128,"id":133,"level":1,"name":"@Fireball","nskillup":1,"reqclass":128,"scaling":18,"schools":4,"skill":[8],"source":[10]}]});
+//]]></script>@@@@@@@@@@==--END SAMPLE--==@@@@@@@@@
+			
+		*/
+
+		//	First check the simple search (same as typing the term into the search at the top right of wowhead
+		$simpler_search_url = "http://www.wowhead.com/search?q=".preg_replace('/\+/', '%20', urlencode($search_term))."&opensearch";
+		//echo "<div>".$simpler_search_url."</div>\n";
+		curl_setopt($ch, CURLOPT_URL, $simpler_search_url);
+		curl_setopt($ch, CURLOPT_HEADER, 0);
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1 );
+		$curl_req = curl_exec($ch);
+		$http_status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+		$search_results = json_decode($curl_req);
+		$match_found = false;
+		if(is_array($search_results[1])) {
+			if(count($search_results[1]) > 0 && count($search_results[1]) < 10) {
+				foreach($search_results[1] as $index => $search_result) {
+					preg_match_all('/([^\(]+)\s\(([^\)]+)\)/',$search_result, $ss_matches);
+					if(preg_replace('/[^\w\d]/i','',preg_replace('/\s+\([^\)]+\)/i', '', $search_result)) == preg_replace('/[^\w\d]/i', '', $search_term) && is_array($search_results[7][$index]) && count($search_results[7][$index]) > 2 && strtolower($ss_matches[2][0]) == strtolower($code)) {
+						$match_found = true;
+						$ss_match =  array("code"=>strtolower($ss_matches[2][0]),"quality"=>((strtolower($code)=="spell")?9:8),"name"=>$ss_matches[1][0],"id"=>$search_results[7][$index][1], "type"=>strtolower($code));
+						//print_r($ss_match);
+						break;
+					}
+				}
+			}
+			if($match_found) {
+				$cache_data = array(
+					"wowdata_id" => "null",
+					"code" => strtolower($code),
+					"text_key" => $search_term,
+					"attribute_keys" => "search_term=".$search_term,
+					"external_id" => $ss_match['id'],
+					"url" => "http://www.wowhead.com/".strtolower($code)."=".$ss_match['id'],
+					"data" => json_encode($ss_match)
+				);
+				wowdata_cachedata($cache_data);
+			}
+		}
+		//	If the Simple search returns too many results (10) or is empty - request a search
+		if(!$match_found) {
+			//	This first URL is for the general search - if spells, default to player spells
+			$request_url = "http://www.wowhead.com/".strtolower($code)."s".((strtolower($code) == "spellREMOVEDBECAUSEITISNOTNEEDED")?"=7":"")."?filter=na=".preg_replace('/\+/','%20',urlencode($search_term));
+			//	As a secondary search - look in the NPC spell list
+			$request_url2 = "http://www.wowhead.com/".strtolower($code)."s".((strtolower($code) == "spell")?"=-8":"")."?filter=na=".preg_replace('/\+/','%20',urlencode($search_term));
+			$request_response = "";
+			//	This pattern will match the segment of the response that contains the results.
+			$match_pattern1 = '/\<\w+ id=[\'"]lv-\w+[\'"] class=[\'"]listview[\'"]\>\<\/\w+\>[\n\r\s]*\<script[^\>]*\>(.+)\<\/script\>.+\<\!-- main-contents --\>/imsU';	//	
+			//	This pattern will match the results within the above matched text. - returning the id of the spell/achievement and the name
+			$match_pattern_all = '/_\[(\d+)\]=\{name_\w+\:\'((?:\\\\\'|[^\'])+)\',icon\:\'((?:\\\\\'|[^\'])+)\'};/iU';
+			$match_pattern2 = '/\{"cat"\:(\d+),"chrclass":(\d+),"id":(\d+),"level":(\d+),"name":"((?:\\\\"|[^"])+)",[^\}]+\}/iU';
+			//$match_pattern2 = '/\{"cat"\:[\d-]+,"chrclass"\:[\d-]+,"id"\:([\d-]+),"level"\:[\d-]+,"name"\:"((?:\\\\"|[^"])+)","nskillup"\:[\d-]+,"rank"\:"((?:\\\\"|[^"])+)","reqclass"\:[\d-]+,"schools"\:[\d-]+,"skill"\:[\d-\[\],\s]+\}/iU';
+			$match_pattern3 = '/\{"category"\:(\d+),"description":"((?:\\\\"|[^"])+)","id":(\d+),"name":"((?:\\\\"|[^"])+)","parentcat":[\d-]+,"points":(\d+),("rewards":([\[\],\d\s]+),)?"side":(\d+),"type":[\d-]+\}/iU';
+			//	I need to decide whether to cache all the results in a new table or store this response and parse it when needed... I think a dedicated table justifies itself based purely on the amount of overhead parsing even this small text match would require.
+			
+			curl_setopt($ch, CURLOPT_URL, $request_url);
+			curl_setopt($ch, CURLOPT_HEADER, 0);
+			curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1 );
+			
+			//	make the request...
+			$curl_req = curl_exec($ch);
+			
+			//	a little debug...
+			$http_status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+			//echo "<div>URL: ".$request_url."</div>\n";
+			//echo "<div>Status: ".$http_status."</div>\n";
+			//echo "<div>Response Length:\n".strlen($curl_req)."</div>\n";
+			
+			//	close cURL resource, and free up system resources
+			curl_close($ch);
+		}
+		
+		$ret = array();
+		if($match_found) {
+			$ret = $ss_match;
+		} else if(preg_match($match_pattern1,$curl_req,$matches1)) {
+				if(strtolower($code) == "achievement") {
+					$match_pattern = $match_pattern3;
+					$match_indecies = array("category"=>1,"desc"=>2,"id"=>3,"name"=>4,"points"=>5,"rewards"=>7,"side"=>8);
+				} else {
+					$match_pattern = $match_pattern2;
+					$match_indecies = array("category"=>1,"desc"=>0,"id"=>3,"name"=>5,"points"=>4,"rewards"=>0,"side"=>2);
+				}
+				if(preg_match_all($match_pattern, $matches1[1],$matches3)) {
+					preg_match_all($match_pattern_all, $matches1[1],$matches2);
+					$achieves = array();
+					foreach($matches3[3] as $index => $id) {
+						$achieves[$id] = array("category"=>$matches3[$match_indecies["category"]][$index],"description"=>$matches3[$match_indecies["desc"]][$index],"id"=>$matches3[$match_indecies["id"]][$index],"name"=>preg_replace('/\@/', '',$matches3[$match_indecies["name"]][$index]),"points"=>$matches3[$match_indecies["points"]][$index],"rewards"=>$matches3[$match_indecies["rewards"]][$index],"side"=>$matches3[$match_indecies["rewards"]][$index]);
+						if(preg_replace('/[^\w\d]/i','',trim($matches3[$match_indecies["name"]][$index])) == preg_replace('/[^\w\d]/i','',trim($search_term))) {
+							$ret = array(
+								"achieve"=>array("quality"=>((strtolower($code)=="spell")?9:8),
+									"name"=>preg_replace('/\@/', '', $matches3[$match_indecies["name"]][$index]),
+									"id"=>$matches3[$match_indecies["id"]][$index],
+									"code"=>strtolower($code)
+								)
+							);
+							//$ret = array_merge($ret, $ret['achieve']);
+							//$search_term = $matches3[4][$index];
+						}
+					}
+					foreach($achieves as $id => $a_data) {
+						$cache_data = array(
+							"wowdata_id" => "null",
+							"code" => strtolower($code),
+							"text_key" => $a_data['name'],
+							"attribute_keys" => "search_term=".$search_term,
+							"external_id" => $a_data['id'],
+							"url" => "http://www.wowhead.com/".strtolower($code)."=".$a_data['id'],
+							"data" => json_encode($a_data)
+						);
+						wowdata_cachedata($cache_data);
+					}
+					//echo "<pre>\nAchieve Count:\n";
+					//echo count($achieves);
+					//print_r($achieves);
+					/*
+					$new_array = json_decode("{''array':".$matches3[1]."}",true);
+					if($new_array === null)
+						echo "Convert returned null\n";
+					echo "JSON Convert:\n";
+					//print_r($new_array);
+					*/
+					//echo "</pre>\n";
+					//echo "Count of specific: ".count($matches3[1])."<br/>\n";
+					//echo "Count of general: ".count($matches2[1])."<br/>\n";
+					/*
+					foreach($matches2[1] as $index => $id) {
+						echo "<div><a href=\"http://www.wowhead.com/achievement=".$matches2[1][$index]."\">".$matches2[2][$index]."</a></div>\n";
+					}
+					*/
+				} else {
+					echo "Error: Match array unpopulated due to regexp error. ".htmlspecialchars($match_pattern2)."<br/>\n";
+				}
+				
+				$ret = array('type' => strtolower($code), 'item_id' => $ret['achieve']['id'], 'icon' => '', 'quality' => $ret['achieve']['quality']);
+		} else {
+			//echo "Error: No match found for data mine from wowhead.<br/>\n";
+			//echo $curl_req;
+			$cache_data = array(
+				"wowdata_id" => "null",
+				"code" => strtolower($code),
+				"text_key" => $search_term,
+				"attribute_keys" => strtolower($code)."=Broken",
+				"external_id" => (strtolower($code)=="spell")?0:0, 		//	88163:5483,
+				"url" => "http://www.wowhead.com/".strtolower($code)."=".(strtolower($code)=="spell")?0:0,		//	88163:5483,
+				"data" => '{"id":18230,"name":"Broken I.W.I.N. Button","itemLevel":1}'
+			);
+			wowdata_cachedata($cache_data);
+			$ret = $cache_data;
+		}
+		return $ret;
 	}
-	if(count($items) > 0) {
-		$cache_data = array(
-			"wowdata_id" => "null",
-			"code" => "item",
-			"text_key" => $search_term,
-			"attribute_keys" => "",
-			"external_id" => "null",
-			"url" => $wowhead_url,
-			"data" => $items
-		);
-		wowdata_cachedata($cache_data);
-		return $items;
-	}else
-		return array();
 }
 
 function wowdata_detectdatatype($data) {

@@ -23,7 +23,7 @@
  * --- WoWData.wow Styles ---------------------------------------------------
  * ========================================================================== */
 
-.poor, .common, .uncommon, .rare, .epic, .legendary, .artifact, .heirloom, .warrior, .paladin, .hunter, .rogue, .priest, .death-knight, .shaman, .mage, .warlock, .druid, .character, .guild, .arena {
+.poor, .common, .uncommon, .rare, .epic, .legendary, .artifact, .heirloom, .warrior, .paladin, .hunter, .rogue, .priest, .death-knight, .shaman, .mage, .warlock, .druid, .character, .guild, .arena, .achievement, .spell {
 	font-weight: bold;
 }
 .poor		{ /* Poor        */ color: #9D9D9D !important; }
@@ -46,3 +46,5 @@
 .warlock	{ /* Warlock      */ color: #9482C9 !important; }
 .druid, .character 		{ /* Druid        */ color: #FF7D0A !important; }
 .guild		{ /* Guild		  */ color: #009933 !important; }
+.achievement{ /* Achievement  */ color: #FFD100 !important; }
+.spell		{ /* Spell		  */ color: #FF4040 !important; }
